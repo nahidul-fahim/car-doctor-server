@@ -30,11 +30,9 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
-
         // Database and collection
         const serviceCollection = client.db("carDoctor").collection("services");
         const bookingCollection = client.db("carDoctor").collection("bookings");
-
 
         // Get all the services
         app.get("/services", async (req, res) => {
@@ -54,6 +52,14 @@ async function run() {
             res.send(result);
         })
 
+        // Get services for cart page according to email
+        app.get("/cart/:email", async (req, res) => {
+            const email = req.params.email;
+            const query = {email: email};
+            const result = await bookingCollection.find(query).toArray();
+            res.send(result);
+        })
+
 
         // Insert a booking service
         app.post("/bookings", async (req, res) => {
@@ -62,6 +68,8 @@ async function run() {
             const result = await bookingCollection.insertOne(booking);
             res.send(result);
         })
+
+
 
 
         // Send a ping to confirm a successful connection
