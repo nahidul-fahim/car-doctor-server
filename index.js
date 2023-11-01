@@ -55,17 +55,39 @@ async function run() {
         // Get services for cart page according to email
         app.get("/cart/:email", async (req, res) => {
             const email = req.params.email;
-            const query = {email: email};
+            const query = { email: email };
             const result = await bookingCollection.find(query).toArray();
             res.send(result);
         })
 
-
         // Insert a booking service
-        app.post("/bookings", async (req, res) => {
+        app.post("/cart", async (req, res) => {
             const booking = req.body;
-            console.log(booking);
             const result = await bookingCollection.insertOne(booking);
+            res.send(result);
+        })
+
+        // Delete a cart item
+        app.delete("/cart/:id", async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await bookingCollection.deleteOne(query);
+            res.send(result);
+        })
+
+
+        // Update status of a cart item
+        app.patch("/cart/:id", async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updateBooking = req.body;
+            console.log("check body from clint side", updateBooking);
+            const updateDoc = {
+                $set: {
+                    status: updateBooking.status
+                },
+            };
+            const result = await bookingCollection.updateOne(filter, updateDoc);
             res.send(result);
         })
 
