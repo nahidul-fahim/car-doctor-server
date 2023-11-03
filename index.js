@@ -1,14 +1,19 @@
 const express = require('express');
 const app = express();
+const jwt = require('jsonwebtoken');
 const cors = require('cors');
+const cookieParser = require('cookie-parser');
 require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+    origin: ['http://localhost:5173'],
+    credentials: true
+}));
 app.use(express.json());
-
+app.use(cookieParser());
 
 const dbUser = process.env.DB_USER;
 const dbPass = process.env.DB_PASS;
@@ -34,6 +39,24 @@ async function run() {
         const serviceCollection = client.db("carDoctor").collection("services");
         const bookingCollection = client.db("carDoctor").collection("bookings");
 
+
+        // Auth related api (Creating token and sending and recieving cookie)
+        app.post("/jwt", async(req, res) => {
+            const user = req.body;
+            console.log(user);
+            const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {expiresIn: '1h'});
+            res
+            .cookie('token', token, {
+                httpOnly: true,
+                secure: false,
+                sameSite: 'none',
+            } )
+            .send({success: true});
+        })
+
+
+
+
         // Get all the services
         app.get("/services", async (req, res) => {
             const cursor = serviceCollection.find();
@@ -55,6 +78,8 @@ async function run() {
         // Get services for cart page according to email
         app.get("/cart/:email", async (req, res) => {
             const email = req.params.email;
+            console.log(req.cookies);
+            console.log( "accessing token too -", req.cookies.token);
             const query = { email: email };
             const result = await bookingCollection.find(query).toArray();
             res.send(result);
