@@ -7,14 +7,46 @@ require('dotenv').config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const port = process.env.PORT || 5000;
 
+
 // Middleware
 app.use(cors({
-    origin: ['http://localhost:5173'],
+    origin: ['http://localhost:5173', 'http://localhost:5174'],
     credentials: true
 }));
 app.use(express.json());
 app.use(cookieParser());
 
+
+// Creating custom Middlewares
+
+// URL checker middleware
+const logger = async(req, res, next) => {
+    console.log("Called:", req.host, req.originalUrl)
+    next();
+};
+
+// Token verifier custom Middleware
+const verifyToken = async(req, res, next) => {
+    const token = req.cookies?.token;
+    console.log("Token from token verifier middleware:", token)
+    if(!token){
+        res.status(401).send({message: "Unauthorized user"})
+    }
+    // verify token
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function(err, decoded) {
+        if(err){
+            console.log("Error in token verifier: ", err)
+            return res.status(401).send({message: 'Unauthorized user'})
+        }
+        console.log("Token verify success! ", decoded);
+        req.decoded = decoded;
+        next();
+    })
+};
+
+
+
+// Database & password info from hidden file
 const dbUser = process.env.DB_USER;
 const dbPass = process.env.DB_PASS;
 
@@ -40,7 +72,7 @@ async function run() {
         const bookingCollection = client.db("carDoctor").collection("bookings");
 
 
-        // Auth related api (Creating token and sending and recieving cookie)
+        // JWT + Auth related api (Creating token and sending and recieving cookie)
         app.post("/jwt", async(req, res) => {
             const user = req.body;
             console.log(user);
@@ -49,12 +81,10 @@ async function run() {
             .cookie('token', token, {
                 httpOnly: true,
                 secure: false,
-                sameSite: 'none',
+                // sameSite: 'none',
             } )
             .send({success: true});
         })
-
-
 
 
         // Get all the services
@@ -63,6 +93,7 @@ async function run() {
             const result = await cursor.toArray();
             res.send(result)
         })
+
 
         // Get a specific service
         app.get("/services/:id", async (req, res) => {
@@ -75,11 +106,11 @@ async function run() {
             res.send(result);
         })
 
+
         // Get services for cart page according to email
-        app.get("/cart/:email", async (req, res) => {
+        app.get("/cart/:email", logger, verifyToken, async (req, res) => {
+            console.log( "Success token verify info -" , req.decoded)
             const email = req.params.email;
-            console.log(req.cookies);
-            console.log( "accessing token too -", req.cookies.token);
             const query = { email: email };
             const result = await bookingCollection.find(query).toArray();
             res.send(result);
