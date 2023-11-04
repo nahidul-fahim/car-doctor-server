@@ -109,8 +109,11 @@ async function run() {
 
         // Get services for cart page according to email
         app.get("/cart/:email", logger, verifyToken, async (req, res) => {
-            console.log( "Success token verify info -" , req.decoded)
+            console.log( "Success token verify info -" , req.decoded.email)
             const email = req.params.email;
+            if(email !== req.decoded.email){
+                return res.status(403).send({message: "Forbidden Access"})
+            };
             const query = { email: email };
             const result = await bookingCollection.find(query).toArray();
             res.send(result);
